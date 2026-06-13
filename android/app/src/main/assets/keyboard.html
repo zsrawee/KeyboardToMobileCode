@@ -104,9 +104,13 @@ var SWIPE_DIRS = [
   {d:'↙',ll:'ST'},{d:'↘',ll:'UV'},{d:'↖',ll:'WX'},{d:'↗',ll:'YZ'},
 ];
 
-// --- Android bridge (with logging) ---
+// --- Android bridge (with logging + bridgeReady guard) ---
 function brCall(name, args) {
   try {
+    if (!window.bridgeReady) {
+      console.log('bridge WAIT: bridge not ready yet, ' + name + ' skipped');
+      return;
+    }
     if (window.Android && window.Android[name]) {
       window.Android[name].apply(window.Android, args);
       console.log('bridge OK: ' + name + ' ' + JSON.stringify(args));
@@ -177,7 +181,7 @@ function handleChar(k) {
 function onKey(k) {
   if (k.a === 'backspace') { deleteChar(); return; }
   if (k.a === 'space') { insertChar(' '); return; }
-  if (k.a === 'enter') { commitComp(); brEnter(); return; }
+  if (k.a === 'enter') { commitComp(); brCall('sendEnter', []); return; }
   if (k.a === 'left') { moveCursor('left'); return; }
   if (k.a === 'right') { moveCursor('right'); return; }
   if (k.a === 'up') { moveCursor('up'); return; }
