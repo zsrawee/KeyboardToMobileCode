@@ -1,4 +1,3 @@
-# Keep the JavaScriptInterface methods
--keepclassmembers class com.compactkb.CompactKeyboardIME$KeyboardBridge {
-    @android.webkit.JavascriptInterface <methods>;
-}
+# No WebView or JavaScript bridge -- nothing to keep
+# Keep all keyboard view classes for reflection-free operation
+-keep class com.compactkb.keyboard.** { *; }
