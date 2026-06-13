@@ -7,8 +7,10 @@
   "types": "dist/index.d.ts",
   "style": "dist/index.esm.css",
   "sideEffects": [
+    "dist/styles.css",
     "dist/index.esm.css",
-    "dist/index.esm.js"
+    "dist/index.esm.js",
+    "dist/keyboard.js"
   ],
   "exports": {
     ".": {

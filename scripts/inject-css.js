@@ -1,21 +1,25 @@
 /**
- * Post-build script: injects the CSS into the JS bundle so it loads
- * automatically when the library is imported.
+ * Post-build script: makes CSS work in all entry points.
  *
- * Reads src/styles.css, wraps it in DOM injection code,
- * and prepends it to dist/index.esm.js.
+ * 1. Copies src/styles.css → dist/styles.css (for bundlers that handle CSS)
+ * 2. Replaces import './styles.css' in dist/keyboard.js with auto-injection
+ * 3. Prepends auto-injection to dist/index.esm.js (already done for ESM bundle)
  */
 const fs = require('fs');
 const path = require('path');
 
-const cssPath = path.resolve(__dirname, '..', 'src', 'styles.css');
-const jsPath = path.resolve(__dirname, '..', 'dist', 'index.esm.js');
+const ROOT = path.resolve(__dirname, '..');
+const cssSrc = path.join(ROOT, 'src', 'styles.css');
+const cssDst = path.join(ROOT, 'dist', 'styles.css');
+const keyboardJs = path.join(ROOT, 'dist', 'keyboard.js');
+const esmJs = path.join(ROOT, 'dist', 'index.esm.js');
 
-const css = fs.readFileSync(cssPath, 'utf-8');
+const css = fs.readFileSync(cssSrc, 'utf-8');
 
 // Escape backticks and ${} for template literal
 const escapedCss = css.replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 
+// The CSS injection code (used in multiple places)
 const injectCode = `
 /* ---- auto-injected keyboard styles ---- */
 (function(){
@@ -29,7 +33,38 @@ const injectCode = `
 })();
 `;
 
-const js = fs.readFileSync(jsPath, 'utf-8');
-fs.writeFileSync(jsPath, injectCode + '\n' + js);
+// ---- 1. Copy CSS to dist/ so import './styles.css' resolves ----
+fs.copyFileSync(cssSrc, cssDst);
+console.log('✅ Copied src/styles.css → dist/styles.css');
 
-console.log('✅ CSS auto-injection prepended to dist/index.esm.js');
+// ---- 2. Replace import in dist/keyboard.js with auto-injection ----
+if (fs.existsSync(keyboardJs)) {
+  let kbJs = fs.readFileSync(keyboardJs, 'utf-8');
+  // Replace the static CSS import with runtime injection
+  if (kbJs.includes("import './styles.css';")) {
+    kbJs = kbJs.replace("import './styles.css';", injectCode);
+    fs.writeFileSync(keyboardJs, kbJs);
+    console.log('✅ Replaced import in dist/keyboard.js with auto-injection');
+  } else {
+    console.log('⚠️  dist/keyboard.js: import statement not found');
+  }
+} else {
+  console.log('⚠️  dist/keyboard.js not found, skipping');
+}
+
+// ---- 3. Prepend auto-injection to dist/index.esm.js ----
+if (fs.existsSync(esmJs)) {
+  let esm = fs.readFileSync(esmJs, 'utf-8');
+  // Check if already injected
+  if (!esm.includes('__ckb_styles')) {
+    esm = injectCode + '\n' + esm;
+    fs.writeFileSync(esmJs, esm);
+    console.log('✅ Prepended auto-injection to dist/index.esm.js');
+  } else {
+    console.log('✅ dist/index.esm.js already has auto-injection');
+  }
+} else {
+  console.log('⚠️  dist/index.esm.js not found, skipping');
+}
+
+console.log('🎉 CSS injection complete');
