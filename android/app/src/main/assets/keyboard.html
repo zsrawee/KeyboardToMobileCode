@@ -71,22 +71,25 @@ var COMP_TIMEOUT = 1200;
 
 // --- Layouts ---
 var COMPACT_KEYS = [
-  {l:'abc', c:['a','b','c']},
-  {l:'def', c:['d','e','f']},
-  {l:'ghi', c:['g','h','i']},
-  {l:'jkl', c:['j','k','l']},
-  {l:'mno', c:['m','n','o']},
-  {l:'pqrs',c:['p','q','r','s']},
-  {l:'tuv', c:['t','u','v']},
-  {l:'wxyz',c:['w','x','y','z']},
-  {l:'/',   c:['/'], s:true},
-  {l:'#',   c:['#'], s:true},
-  {l:'←',   a:'left'},
-  {l:'↑',   a:'up'},
-  {l:'↓',   a:'down'},
-  {l:'→',   a:'right'},
-  {l:'⌫',   a:'backspace'},
-  {l:'◉',   a:'mode'},
+  // Row 1 – letters + symbols (each key ~10% width)
+  {row:1, l:'abc', c:['a','b','c']},
+  {row:1, l:'def', c:['d','e','f']},
+  {row:1, l:'ghi', c:['g','h','i']},
+  {row:1, l:'jkl', c:['j','k','l']},
+  {row:1, l:'mno', c:['m','n','o']},
+  {row:1, l:'pqrs',c:['p','q','r','s']},
+  {row:1, l:'tuv', c:['t','u','v']},
+  {row:1, l:'wxyz',c:['w','x','y','z']},
+  {row:1, l:'/',   c:['/'], s:true},
+  {row:1, l:'#',   c:['#'], s:true},
+  // Row 2 – navigation + space + mode
+  {row:2, l:'←',   a:'left'},
+  {row:2, l:'↑',   a:'up'},
+  {row:2, l:'↓',   a:'down'},
+  {row:2, l:'→',   a:'right'},
+  {row:2, l:'⌫',   a:'backspace'},
+  {row:2, l:'␣',   a:'space', wide:true},
+  {row:2, l:'◉',   a:'mode'},
 ];
 
 var T9_KEYS = [
@@ -101,35 +104,32 @@ var SWIPE_DIRS = [
   {d:'↙',ll:'ST'},{d:'↘',ll:'UV'},{d:'↖',ll:'WX'},{d:'↗',ll:'YZ'},
 ];
 
-// --- Android bridge ---
-function brCommit(ch) {
-  try { if (window.Android) Android.commitChar(ch); } catch(e) { console.log('bridge err:', e); }
-}
-function brDelete() {
-  try { if (window.Android) Android.deleteBackward(); } catch(e) { console.log('bridge err:', e); }
-}
-function brEnter() {
-  try { if (window.Android) Android.sendEnter(); } catch(e) { console.log('bridge err:', e); }
-}
-function brMove(d) {
-  try { if (window.Android) Android.moveCursor(d); } catch(e) { console.log('bridge err:', e); }
-}
-function brVib(ms) {
-  try { if (window.Android) Android.vibrate(ms); } catch(e) { /* no vib */ }
+// --- Android bridge (with logging) ---
+function brCall(name, args) {
+  try {
+    if (window.Android && window.Android[name]) {
+      window.Android[name].apply(window.Android, args);
+      console.log('bridge OK: ' + name + ' ' + JSON.stringify(args));
+    } else {
+      console.log('bridge MISSING: Android.' + name + ' not found');
+    }
+  } catch(e) {
+    console.log('bridge ERR: ' + name + ' - ' + e.message);
+  }
 }
 
 // --- Core ---
 function commitComp() {
   if (composition) {
-    brCommit(composition);
+    brCall('commitChar', [composition]);
     composition = '';
     showComp();
   }
 }
 function insertChar(ch) {
   commitComp();
-  brCommit(ch);
-  brVib(10);
+  brCall('commitChar', [ch]);
+  brCall('vibrate', [10]);
 }
 function deleteChar() {
   if (composition) {
@@ -138,12 +138,12 @@ function deleteChar() {
     clearTimeout(tapTimeout);
     return;
   }
-  brDelete();
-  brVib(15);
+  brCall('deleteBackward', []);
+  brCall('vibrate', [15]);
 }
 function moveCursor(d) {
-  brMove(d);
-  brVib(5);
+  brCall('moveCursor', [d]);
+  brCall('vibrate', [5]);
 }
 function switchMode() {
   commitComp();
@@ -234,39 +234,46 @@ function renderKeys() {
   document.getElementById('status').textContent = '⌨️ ' + inputMode;
 
   if (inputMode === 'compact') {
-    var row = document.createElement('div');
-    row.className = 'ckb-row-single';
-    COMPACT_KEYS.forEach(function(k) {
-      var btn = document.createElement('button');
-      var sp = k.a === 'backspace' || k.a === 'mode';
-      btn.className = 'ckb-key' + (sp ? ' ckb-key-special' : '') + ' ckb-key-compact';
+    // Two rows: row 1 = letters, row 2 = navigation + space + mode
+    for (var ri = 1; ri <= 2; ri++) {
+      var row = document.createElement('div');
+      row.className = 'ckb-row';
+      var keysInRow = COMPACT_KEYS.filter(function(k) { return (k.row || 1) === ri; });
+      keysInRow.forEach(function(k) {
+        var btn = document.createElement('button');
+        var sp = k.a === 'backspace' || k.a === 'mode';
+        btn.className = 'ckb-key';
+        if (sp) btn.classList.add('ckb-key-special');
+        if (k.a === 'space' || k.wide) btn.classList.add('ckb-key-wide');
+        btn.classList.add('ckb-key-compact');
 
-      if (k.c && !k.s) {
-        // Multi-tap key
-        var big = document.createElement('span');
-        big.className = 'ckb-primary';
-        big.textContent = k.c[0];
-        var small = document.createElement('span');
-        small.className = 'ckb-secondary';
-        small.textContent = k.l;
-        btn.appendChild(big);
-        btn.appendChild(small);
-        onPress(btn, function() {
-          // Update the big letter based on current composition
-          if (composition && k.c.indexOf(composition) >= 0) {
-            big.textContent = composition;
-          } else {
-            big.textContent = k.c[0];
-          }
-          onKey(k);
-        });
-      } else {
-        btn.textContent = k.l;
-        onPress(btn, function() { onKey(k); });
-      }
-      row.appendChild(btn);
-    });
-    kb.appendChild(row);
+        if (k.c && !k.s) {
+          // Multi-tap key
+          var big = document.createElement('span');
+          big.className = 'ckb-primary';
+          big.textContent = k.c[0];
+          var small = document.createElement('span');
+          small.className = 'ckb-secondary';
+          small.textContent = k.l;
+          btn.appendChild(big);
+          btn.appendChild(small);
+          onPress(btn, function() {
+            // Update the big letter based on current composition
+            if (composition && k.c.indexOf(composition) >= 0) {
+              big.textContent = composition;
+            } else {
+              big.textContent = k.c[0];
+            }
+            onKey(k);
+          });
+        } else {
+          btn.textContent = k.l;
+          onPress(btn, function() { onKey(k); });
+        }
+        row.appendChild(btn);
+      });
+      kb.appendChild(row);
+    }
   }
   else if (inputMode === 't9') {
     T9_KEYS.forEach(function(rowDef) {
@@ -285,33 +292,47 @@ function renderKeys() {
     });
   }
   else if (inputMode === 'swipe') {
+    // First row: 4 swipe direction keys
     var row = document.createElement('div');
     row.className = 'ckb-row';
-    row.style.flexWrap = 'wrap';
-    SWIPE_DIRS.forEach(function(d) {
+    SWIPE_DIRS.slice(0,4).forEach(function(d) {
       var btn = document.createElement('button');
       btn.className = 'ckb-key ckb-key-special ckb-key-compact';
-      btn.style.flex = '1 1 22%';
-      btn.style.margin = '1px';
       btn.innerHTML = '<span style="font-size:14px">' + d.d + '</span><span style="font-size:7px;opacity:.5">' + d.ll + '</span>';
-      onPress(btn, function() { /* swipe mode - just visual for now */ });
+      onPress(btn, function() { console.log('swipe key not implemented:', d.d); });
       row.appendChild(btn);
     });
+    kb.appendChild(row);
+    // Second row: 4 more swipe keys
+    var row2 = document.createElement('div');
+    row2.className = 'ckb-row';
+    SWIPE_DIRS.slice(4,8).forEach(function(d) {
+      var btn = document.createElement('button');
+      btn.className = 'ckb-key ckb-key-special ckb-key-compact';
+      btn.innerHTML = '<span style="font-size:14px">' + d.d + '</span><span style="font-size:7px;opacity:.5">' + d.ll + '</span>';
+      onPress(btn, function() { console.log('swipe key not implemented:', d.d); });
+      row2.appendChild(btn);
+    });
+    kb.appendChild(row2);
+    // Third row: ⌫ space ◉
+    var row3 = document.createElement('div');
+    row3.className = 'ckb-row';
     var bs = document.createElement('button');
     bs.className = 'ckb-key ckb-key-special';
-    bs.style.flex = '1 1 30%';
-    bs.style.margin = '1px';
     bs.textContent = '⌫';
     onPress(bs, function() { deleteChar(); });
-    row.appendChild(bs);
+    row3.appendChild(bs);
     var sp = document.createElement('button');
-    sp.className = 'ckb-key ckb-key-special';
-    sp.style.flex = '1 1 22%';
-    sp.style.margin = '1px';
+    sp.className = 'ckb-key ckb-key-wide';
     sp.textContent = '␣';
     onPress(sp, function() { insertChar(' '); });
-    row.appendChild(sp);
-    kb.appendChild(row);
+    row3.appendChild(sp);
+    var md = document.createElement('button');
+    md.className = 'ckb-key ckb-key-special';
+    md.textContent = '◉';
+    onPress(md, function() { switchMode(); });
+    row3.appendChild(md);
+    kb.appendChild(row3);
   }
 }
 

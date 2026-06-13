@@ -89,6 +89,8 @@ class CompactKeyboardIME : InputMethodService() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
                     android.util.Log.d("CompactKB", "Page loaded: $url")
+                    // Tell JS that bridge is ready
+                    view?.evaluateJavascript("window.bridgeReady=true; console.log('bridgeReady set true');", null)
                 }
             })
 
@@ -109,31 +111,56 @@ class CompactKeyboardIME : InputMethodService() {
 
         @JavascriptInterface
         fun commitText(text: String) {
-            val ic = currentInputConnection ?: return
+            android.util.Log.d("CompactKB", "commitText: \"" + text + "\"")
+            val ic = currentInputConnection
+            if (ic == null) {
+                android.util.Log.w("CompactKB", "commitText: currentInputConnection is NULL")
+                return
+            }
             ic.commitText(text, 1)
         }
 
         @JavascriptInterface
         fun commitChar(char: String) {
-            val ic = currentInputConnection ?: return
+            android.util.Log.d("CompactKB", "commitChar: \"" + char + "\"")
+            val ic = currentInputConnection
+            if (ic == null) {
+                android.util.Log.w("CompactKB", "commitChar: currentInputConnection is NULL")
+                return
+            }
             ic.commitText(char, 1)
         }
 
         @JavascriptInterface
         fun deleteBackward() {
-            val ic = currentInputConnection ?: return
+            android.util.Log.d("CompactKB", "deleteBackward")
+            val ic = currentInputConnection
+            if (ic == null) {
+                android.util.Log.w("CompactKB", "deleteBackward: currentInputConnection is NULL")
+                return
+            }
             ic.deleteSurroundingText(1, 0)
         }
 
         @JavascriptInterface
         fun sendEnter() {
-            val ic = currentInputConnection ?: return
+            android.util.Log.d("CompactKB", "sendEnter")
+            val ic = currentInputConnection
+            if (ic == null) {
+                android.util.Log.w("CompactKB", "sendEnter: currentInputConnection is NULL")
+                return
+            }
             ic.commitText("\n", 1)
         }
 
         @JavascriptInterface
         fun moveCursor(direction: String) {
-            val ic = currentInputConnection ?: return
+            android.util.Log.d("CompactKB", "moveCursor: \"" + direction + "\"")
+            val ic = currentInputConnection
+            if (ic == null) {
+                android.util.Log.w("CompactKB", "moveCursor: currentInputConnection is NULL")
+                return
+            }
             try {
                 val sel = ic.getTextBeforeCursor(1000, 0)?.length ?: 0
                 when (direction) {
@@ -144,7 +171,9 @@ class CompactKeyboardIME : InputMethodService() {
                     }
                     "up", "down" -> { /* ignore vertical movement */ }
                 }
-            } catch (e: Exception) { /* ignore cursor errors */ }
+            } catch (e: Exception) {
+                android.util.Log.w("CompactKB", "moveCursor error: " + e.message)
+            }
         }
 
         @JavascriptInterface
