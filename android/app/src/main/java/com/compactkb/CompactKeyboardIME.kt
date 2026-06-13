@@ -30,15 +30,14 @@ class CompactKeyboardIME : InputMethodService() {
         super.onCreate()
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreateInputView(): View {
         webView = WebView(this).apply {
-            @SuppressLint("SetJavaScriptEnabled")
             settings.apply {
                 javaScriptEnabled = true
                 javaScriptCanOpenWindowsAutomatically = false
                 cacheMode = WebSettings.LOAD_NO_CACHE
                 allowFileAccess = true
-                setAppCacheEnabled(false)
                 builtInZoomControls = false
                 displayZoomControls = false
                 loadWithOverviewMode = true
