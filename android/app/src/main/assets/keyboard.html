@@ -3,36 +3,98 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>KB</title>
+<title>Compact KB</title>
 <style>
-body{margin:0;padding:0;background:#1c1c1e;color:#fff;font:14px sans-serif;overflow:hidden}
-#app{padding:2px}
-.r{display:flex;gap:2px;margin-bottom:2px}
-.k{flex:1;padding:6px 0;background:#2c2c2e;border:none;border-radius:4px;color:#fff;font-size:12px;text-align:center}
-.k:active{background:#3a3a3c}
-.s{background:#3a3a3c}
-.w{flex:1.8}
+html,body{width:100%;height:100%;margin:0;padding:0;background:#1c1c1e;color:#fff;font:14px Roboto,sans-serif;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%;padding:1px}
+.row{display:flex;gap:2px;margin-bottom:2px}
+.btn{flex:1;padding:7px 0;background:#2c2c2e;border:none;border-radius:4px;color:#fff;font-size:11px;text-align:center;touch-action:manipulation}
+.btn:active,.btn.down{background:#3a3a3c}
+.btn.sp{background:#3a3a3c}
+.btn.wide{flex:1.8}
+.top{display:flex;justify-content:space-between;padding:2px 4px;margin-bottom:1px;font-size:9px;color:#888}
+.top button{background:0 0;border:none;color:#0a84ff;font-size:10px;padding:2px 6px;border-radius:3px}
 </style>
 </head>
 <body>
-<div id="app">
-<div class="r">
- <button class="k" onclick="c('a')">a</button>
- <button class="k" onclick="c('b')">b</button>
- <button class="k" onclick="c('c')">c</button>
-</div>
-<div class="r">
- <button class="k s" onclick="del()">⌫</button>
- <button class="k w" onclick="sp()">␣</button>
- <button class="k w" onclick="en()">↵</button>
-</div>
-</div>
+<div id="app"></div>
 <script>
-function c(ch){try{Android.commitText(ch);}catch(e){}try{Android.vibrate(8);}catch(e){}}
-function del(){try{Android.deleteBackward();}catch(e){}}
-function sp(){try{Android.commitText(' ');}catch(e){}}
-function en(){try{Android.sendEnter();}catch(e){}}
-try{Android.vibrate(1);}catch(e){}
+var lang='en',comp='',sym=false,md='compact';
+
+var layout={
+ en:[
+  [{t:'abc',c:'abc'},{t:'def',c:'def'},{t:'ghi',c:'ghi'},{t:'jkl',c:'jkl'},{t:'mno',c:'mno'},{t:'pqrs',c:'pqrs'},{t:'tuv',c:'tuv'},{t:'wxyz',c:'wxyz'}],
+  [{t:'/',c:'/'},{t:'#',c:'#'},{t:'←',a:'left'},{t:'↑',a:'up'},{t:'↓',a:'down'},{t:'→',a:'right'},{t:'⌫',a:'del',sp:1}],
+  [{t:'🌐',a:'lang',sp:1},{t:'␣',a:'space',w:1},{t:'↵',a:'enter',w:1},{t:'123',a:'num',sp:1},{t:'◉',a:'mode',sp:1}]
+ ],
+ ar:[
+  [{t:'ابت',c:'ابت'},{t:'ثجح',c:'ثجح'},{t:'خدذ',c:'خدذ'},{t:'رزس',c:'رزس'},{t:'شصض',c:'شصض'},{t:'طظع',c:'طظع'},{t:'غفق',c:'غفق'},{t:'كلم',c:'كلم'},{t:'نهوي',c:'نهوي'}],
+  [{t:'/',c:'/'},{t:'#',c:'#'},{t:'←',a:'left'},{t:'↑',a:'up'},{t:'↓',a:'down'},{t:'→',a:'right'},{t:'⌫',a:'del',sp:1}],
+  [{t:'EN',a:'lang',sp:1},{t:'␣',a:'space',w:1},{t:'↵',a:'enter',w:1},{t:'123',a:'num',sp:1},{t:'◉',a:'mode',sp:1}]
+ ]
+};
+
+function render(){
+ var app=document.getElementById('app');app.innerHTML='';
+ // top bar
+ var tb=document.createElement('div');tb.className='top';
+ tb.innerHTML='<span id=\"ml\">'+md+'</span><div><button onclick=\"try{Android.switchToNextIME()}catch(e){}\">⌨️</button><button onclick=\"try{Android.performBack()}catch(e){}\">✕</button></div>';
+ app.appendChild(tb);
+ // rows
+ var rows;
+ if(sym){
+  rows=[
+   [{t:'1',c:'1'},{t:'2',c:'2'},{t:'3',c:'3'},{t:'4',c:'4'},{t:'5',c:'5'},{t:'6',c:'6'},{t:'7',c:'7'},{t:'8',c:'8'},{t:'9',c:'9'},{t:'0',c:'0'}],
+   [{t:'@',c:'@'},{t:'!',c:'!'},{t:'?',c:'?'},{t:'.',c:'.'},{t:',',c:','},{t:\"'\",c:\"'\"},{t:'\"',c:'\"'},{t:';',c:';'},{t:':',c:':'},{t:'-',c:'-'}],
+   [{t:'💬',a:'lang'},{t:'␣',a:'space',w:1},{t:'↵',a:'enter',w:1},{t:'ABC',a:'num'},{t:'⌫',a:'del',sp:1}]
+  ];
+ }else{rows=layout[lang];}
+ for(var ri=0;ri<rows.length;ri++){
+  var r=document.createElement('div');r.className='row';
+  var keys=rows[ri];
+  for(var ki=0;ki<keys.length;ki++){
+   (function(k){
+    var b=document.createElement('button');b.className='btn';
+    if(k.sp)b.className+=' sp';if(k.w)b.className+=' wide';
+    b.textContent=k.t;
+    b.onclick=function(){handle(k,b);};
+    r.appendChild(b);
+   })(keys[ki]);
+  }
+  app.appendChild(r);
+ }
+}
+
+function handle(k,b){
+ try{
+  if(k.a=='del'){comp='';try{Android.deleteBackward();}catch(e){}return;}
+  if(k.a=='left'||k.a=='right'||k.a=='up'||k.a=='down'){comp='';try{Android.moveCursor(k.a);}catch(e){}return;}
+  if(k.a=='space'){comp='';try{Android.commitText(' ');}catch(e){}return;}
+  if(k.a=='enter'){comp='';try{Android.sendEnter();}catch(e){}return;}
+  if(k.a=='lang'){lang=(lang=='en')?'ar':'en';sym=false;render();return;}
+  if(k.a=='num'){sym=!sym;comp='';render();return;}
+  if(k.a=='mode'){
+   var ms=['compact','t9','swipe'];var i=ms.indexOf(md);md=ms[(i+1)%3];
+   document.getElementById('ml').textContent=md;render();return;
+  }
+  if(!k.c)return;
+  // Multi-tap (only for letter groups with 2+ chars)
+  if(k.c.length>1&&!k.sp){
+   if(comp){
+    var i=k.c.indexOf(comp);
+    if(i>=0&&i<k.c.length-1){comp=k.c[i+1];}else{try{Android.commitText(comp);}catch(e){}comp=k.c[0];}
+   }else{comp=k.c[0];}
+   if(b){var oldT=b.textContent;b.textContent=comp;setTimeout(function(){b.textContent=oldT;},800);}
+   try{Android.vibrate(8);}catch(e){}
+   return;
+  }
+  // Single character
+  try{Android.commitText(k.c);}catch(e){}
+  try{Android.vibrate(8);}catch(e){}
+ }catch(e){}
+}
+
+render();
 </script>
 </body>
 </html>

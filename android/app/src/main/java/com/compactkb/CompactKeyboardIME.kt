@@ -1,6 +1,7 @@
 package com.compactkb
 
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.VibrationEffect
@@ -10,6 +11,8 @@ import android.view.KeyEvent
 import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -38,8 +41,12 @@ class CompactKeyboardIME : InputMethodService() {
                 javaScriptCanOpenWindowsAutomatically = false
                 cacheMode = WebSettings.LOAD_NO_CACHE
                 allowFileAccess = true
+                allowFileAccessFromFileURLs = true
+                allowUniversalAccessFromFileURLs = true
+                domStorageEnabled = true
                 builtInZoomControls = false
                 displayZoomControls = false
+                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             }
 
             setWebChromeClient(object : WebChromeClient() {
@@ -48,8 +55,34 @@ class CompactKeyboardIME : InputMethodService() {
                 }
             })
             setWebViewClient(object : WebViewClient() {
+                @Suppress("DEPRECATION")
                 override fun onReceivedError(view: WebView?, errorCode: Int, desc: String?, url: String?) {
-                    android.util.Log.e("CompactKB", "WebView error [$errorCode]: $desc")
+                    android.util.Log.e("CompactKB", "WebView error(legacy) [$errorCode]: $desc url=$url")
+                }
+
+                @TargetApi(android.os.Build.VERSION_CODES.M)
+                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                    val reqUrl = request?.url?.toString() ?: "unknown"
+                    val errCode = error?.errorCode ?: 0
+                    val desc = error?.description?.toString() ?: ""
+                    android.util.Log.e("CompactKB", "WebView error(api23) [$errCode]: $desc url=$reqUrl")
+                    // Only show error page for main frame errors
+                    if (request?.isForMainFrame == true) {
+                        // Stop the error page from appearing - load a simple fallback
+                        val fallback = """
+                            <!DOCTYPE html><html><body style="background:#1c1c1e;color:#fff;padding:10px;font:14px sans-serif">
+                            <h3>Compact KB</h3>
+                            <p>Loading error: $errCode</p>
+                            <p>Try switching keyboards and back</p>
+                            </body></html>
+                        """.trimIndent()
+                        view?.loadDataWithBaseURL(null, fallback, "text/html", "UTF-8", null)
+                    }
+                }
+
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    android.util.Log.d("CompactKB", "Page loaded: $url")
                 }
             })
 
