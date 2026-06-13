@@ -200,20 +200,27 @@ function showComp() {
   el.textContent = composition;
 }
 
-// --- Event helper: attaches both touchstart (Android WebView) and pointerdown ---
+// --- Event helper: uses touchstart for Android WebView (pointerdown fires twice on some devices) ---
+var _pressed = null;
 function onPress(el, fn) {
-  function handler(e) {
+  function start(e) {
     e.preventDefault();
+    if (_pressed === el) return; // guard against double-fire
+    _pressed = el;
     fn();
     el.classList.add('ckb-key-active');
   }
-  function release() { el.classList.remove('ckb-key-active'); }
-  el.addEventListener('pointerdown', handler);
-  el.addEventListener('touchstart', handler);
-  el.addEventListener('pointerup', release);
-  el.addEventListener('pointerleave', release);
-  el.addEventListener('touchend', release);
-  el.addEventListener('touchcancel', release);
+  function end(e) {
+    if (_pressed === el) _pressed = null;
+    el.classList.remove('ckb-key-active');
+  }
+  el.addEventListener('touchstart', start);
+  el.addEventListener('touchend', end);
+  el.addEventListener('touchcancel', end);
+  // pointerdown as fallback for non-touch
+  el.addEventListener('pointerdown', start);
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointerleave', end);
 }
 
 // --- Render ---

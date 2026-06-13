@@ -9,6 +9,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.KeyEvent
 import android.view.View
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -42,7 +43,6 @@ class CompactKeyboardIME : InputMethodService() {
                 cacheMode = WebSettings.LOAD_NO_CACHE
                 allowFileAccess = true
                 allowFileAccessFromFileURLs = true
-                allowUniversalAccessFromFileURLs = true
                 domStorageEnabled = true
                 builtInZoomControls = false
                 displayZoomControls = false
@@ -50,11 +50,17 @@ class CompactKeyboardIME : InputMethodService() {
             }
 
             setWebChromeClient(object : WebChromeClient() {
-                override fun onConsoleMessage(msg: String, line: Int, source: String) {
-                    android.util.Log.d("CompactKB", "JS[$source:$line]: $msg")
+                override fun onConsoleMessage(cmsg: ConsoleMessage): Boolean {
+                    android.util.Log.d("CompactKB", "JS[" + cmsg.sourceId() + ":" + cmsg.lineNumber() + "]: " + cmsg.message())
+                    return true
                 }
             })
             setWebViewClient(object : WebViewClient() {
+                override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                    super.onPageStarted(view, url, favicon)
+                    android.util.Log.d("CompactKB", "Page started: $url")
+                }
+
                 @Suppress("DEPRECATION")
                 override fun onReceivedError(view: WebView?, errorCode: Int, desc: String?, url: String?) {
                     android.util.Log.e("CompactKB", "WebView error(legacy) [$errorCode]: $desc url=$url")
@@ -129,11 +135,11 @@ class CompactKeyboardIME : InputMethodService() {
         fun moveCursor(direction: String) {
             val ic = currentInputConnection ?: return
             try {
-                val sel = ic.getTextBeforeCursor(Int.MAX_VALUE, 0)?.length ?: 0
+                val sel = ic.getTextBeforeCursor(1000, 0)?.length ?: 0
                 when (direction) {
                     "left" -> if (sel > 0) ic.setSelection(sel - 1, sel - 1)
                     "right" -> {
-                        val len = ic.getTextAfterCursor(Int.MAX_VALUE, 0)?.length ?: 0
+                        val len = ic.getTextAfterCursor(1000, 0)?.length ?: 0
                         ic.setSelection(sel + 1, sel + 1)
                     }
                     "up", "down" -> { /* ignore vertical movement */ }
@@ -172,6 +178,14 @@ class CompactKeyboardIME : InputMethodService() {
         @JavascriptInterface
         fun switchToNextIME() {
             switchToNextInputMethod(false)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::webView.isInitialized) {
+            webView.removeAllViews()
+            webView.destroy()
         }
     }
 
