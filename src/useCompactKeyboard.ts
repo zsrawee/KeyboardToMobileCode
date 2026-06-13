@@ -84,11 +84,12 @@ export function useCompactKeyboard(
     const action = key.action ?? 'character';
     switch (action) {
       case 'character': {
-        if (key.secondary && key.secondary.length > 0) {
+        const secondary = key.secondary;
+        if (secondary && secondary.length > 0) {
           // Multi-tap: cycle through secondary characters
           setState(prev => {
             const comp = prev.composition || key.primary;
-            const all = [key.primary, ...key.secondary];
+            const all = [key.primary, ...secondary];
             let nextComp: string;
             if (prev.composition) {
               const idx = all.indexOf(prev.composition);

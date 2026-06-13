@@ -5,8 +5,22 @@
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "style": "dist/index.esm.css",
+  "sideEffects": [
+    "dist/index.esm.css",
+    "dist/index.esm.js"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "style": "./dist/index.esm.css",
+      "default": "./dist/index.esm.js"
+    },
+    "./dist/index.esm.css": "./dist/index.esm.css"
+  },
   "scripts": {
-    "build": "tsc && esbuild src/index.ts --bundle --format=esm --outfile=dist/index.esm.js --external:react --external:react-dom",
+    "build": "tsc && esbuild src/index.ts --bundle --format=esm --outfile=dist/index.esm.js --external:react --external:react-dom && node scripts/inject-css.js",
     "dev": "vite",
     "preview": "vite preview",
     "test": "vitest run",

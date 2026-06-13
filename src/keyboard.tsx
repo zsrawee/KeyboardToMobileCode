@@ -113,11 +113,11 @@ export function CompactKeyboard({
   const [inputMode, setInputMode] = useState<'compact' | 't9' | 'swipe'>(initialInputMode);
   const [activeKeyIdx, setActiveKeyIdx] = useState<number | null>(null);
 
-  // For controlled mode, cursor is always at end
-  const effectiveCursor = isControlled ? text.length : cursorPos;
-
   const isControlled = controlledValue !== undefined;
   const text = isControlled ? controlledValue : internalText;
+
+  // For controlled mode, cursor is always at end
+  const effectiveCursor = isControlled ? text.length : cursorPos;
 
   // Touch event tracking for swipe mode
   const touchPoints = useRef<TouchPoint[]>([]);
