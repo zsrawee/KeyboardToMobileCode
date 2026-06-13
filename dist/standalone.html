@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Compact Keyboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#000;color:#fff;touch-action:none;-webkit-user-select:none;user-select:none}
+#app{width:100%;height:100%;display:flex;flex-direction:column}
+header{padding:10px 14px;background:rgba(0,0,0,0.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:15px;font-weight:600}
+.badge{font-size:9px;padding:2px 7px;background:#007aff;border-radius:10px;font-weight:500}
+.chat{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px}
+.chat>div{max-width:80%;padding:8px 12px;border-radius:16px;font-size:14px;line-height:1.4;word-break:break-word}
+.chat .sent{align-self:flex-end;background:#007aff;color:#fff;border-bottom-right-radius:4px}
+.chat .recv{align-self:flex-start;background:#2c2c2e;color:#e5e5ea;border-bottom-left-radius:4px}
+.input-area{padding:6px 12px 4px 12px;display:flex;align-items:center;gap:6px}
+.input-area .preview{flex:1;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:18px;padding:6px 12px;font-size:15px;color:#fff;min-height:32px;display:flex;align-items:center;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.input-area .preview::-webkit-scrollbar{display:none}
+.input-area .preview .cursor{display:inline-block;width:2px;height:16px;background:#007aff;margin-left:1px;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.mode-label{font-size:9px;color:#8e8e93;padding:3px 7px;background:#1c1c1e;border-radius:8px;white-space:nowrap;border:1px solid #3a3a3c}
+
+/* ---- KEYBOARD ---- */
+.ckb{background:#1c1c1e;padding:2px 2px;width:100%;position:relative}
+.ckb-row{display:flex;gap:2px;width:100%}
+.ckb-key{flex:1;display:flex;align-items:center;justify-content:center;background:#2c2c2e;color:#fff;border:none;border-radius:5px;font-size:10px;font-weight:500;padding:3px 0;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;touch-action:manipulation;outline:none;font-family:inherit;line-height:1;min-height:28px}
+.ckb-key:active,.ckb-key.pressed{background:#3a3a3c!important;transform:scale(0.93)}
+.ckb-key.special{background:#3a3a3c;font-size:12px}
+.ckb-key.compact{font-size:8px;letter-spacing:-0.2px;flex-direction:column;padding:1px 0;min-height:28px}
+.ckb-key.compact .big{font-size:11px;font-weight:600}
+.ckb-key.compact .small{font-size:6px;color:#8e8e93;letter-spacing:-0.1px}
+.ckb-key .multi{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;font-weight:600;color:#0a84ff;pointer-events:none}
+.ckb-comp{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#2c2c2e;color:#0a84ff;font-size:14px;font-weight:600;padding:2px 14px;border-radius:8px 8px 0 0;z-index:10}
+
+/* ---- Predictions ---- */
+.ckb-pred{display:flex;gap:3px;padding:3px 6px;overflow-x:auto;scrollbar-width:none;background:#1c1c1e;border-bottom:1px solid rgba(128,128,128,0.15);min-height:28px}
+.ckb-pred::-webkit-scrollbar{display:none}
+.ckb-pred button{flex-shrink:0;padding:2px 8px;border:none;border-radius:10px;background:#2c2c2e;color:#0a84ff;font-size:11px;font-weight:500;cursor:pointer;white-space:nowrap}
+.ckb-pred button:active{opacity:0.7}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>⌨️ Compact KB</h1>
+    <span class="badge">52px</span>
+  </header>
+  <div class="chat" id="chat">
+    <div class="recv">⬇️ <b>Compact mode</b> — tap letter groups to cycle</div>
+    <div class="recv">⬇️ <b>/</b> and <b>#</b> keys added</div>
+    <div class="recv">⬇️ Arrow keys <b>←↑↓→</b> move cursor</div>
+  </div>
+  <div class="input-area">
+    <div class="preview" id="preview"><span id="textDisplay"></span><span class="cursor"></span></div>
+    <span class="mode-label" id="modeLabel">compact</span>
+  </div>
+  <div id="predBar" class="ckb-pred"></div>
+  <div class="ckb" id="kb"></div>
+</div>
+<script>
+// ===== COMPACT KEYBOARD - Vanilla JS =====
+const textDisplay = document.getElementById('textDisplay');
+const preview = document.getElementById('preview');
+const modeLabel = document.getElementById('modeLabel');
+const predBar = document.getElementById('predBar');
+const kb = document.getElementById('kb');
+const chat = document.getElementById('chat');
+
+let text = '';
+let cursor = 0;
+let composition = '';
+let inputMode = 'compact'; // compact | t9 | swipe
+
+// Word frequency (top 40)
+const DICT = {
+  the:1,be:.98,to:.97,of:.96,and:.95,a:.94,in:.93,that:.92,have:.91,
+  it:.90,for:.89,not:.88,on:.87,with:.86,he:.85,as:.84,you:.83,do:.82,
+  at:.81,this:.80,but:.79,his:.78,by:.77,from:.76,they:.75,we:.74,
+  say:.73,her:.72,she:.71,or:.70,an:.69,will:.68,my:.67,one:.66,
+  all:.65,would:.64,there:.63
+};
+
+// --- Layouts ---
+const COMPACT_KEYS = [
+  { label:'abc', chars:['a','b','c'] },
+  { label:'def', chars:['d','e','f'] },
+  { label:'ghi', chars:['g','h','i'] },
+  { label:'jkl', chars:['j','k','l'] },
+  { label:'mno', chars:['m','n','o'] },
+  { label:'pqrs',chars:['p','q','r','s'] },
+  { label:'tuv', chars:['t','u','v'] },
+  { label:'wxyz',chars:['w','x','y','z'] },
+  { label:'/',   chars:['/'], single:true },
+  { label:'#',   chars:['#'], single:true },
+  { label:'←',   action:'left' },
+  { label:'↑',   action:'up' },
+  { label:'↓',   action:'down' },
+  { label:'→',   action:'right' },
+  { label:'⌫',   action:'backspace' },
+  { label:'◉',   action:'mode' },
+];
+
+const T9_KEYS = [
+  [{label:'abc',chars:['a','b','c']},{label:'def',chars:['d','e','f']},{label:'ghi',chars:['g','h','i']}],
+  [{label:'jkl',chars:['j','k','l']},{label:'mno',chars:['m','n','o']},{label:'pqrs',chars:['p','q','r','s']}],
+  [{label:'tuv',chars:['t','u','v']},{label:'wxyz',chars:['w','x','y','z']},{label:'⌫',action:'backspace'}],
+  [{label:'◉',action:'mode'},{label:'␣',action:'space'},{label:'↵',action:'enter'}],
+];
+
+// --- Functions ---
+function updateDisplay() {
+  textDisplay.textContent = text || 'Type...';
+  // scroll preview to end
+  preview.scrollLeft = preview.scrollWidth;
+  updatePredictions();
+}
+
+function updatePredictions() {
+  const words = text.split(/\s+/);
+  const last = words[words.length-1] || '';
+  predBar.innerHTML = '';
+  if (!last) return;
+  const matches = Object.keys(DICT).filter(w => w.startsWith(last)).sort((a,b)=>DICT[b]-DICT[a]).slice(0,3);
+  matches.forEach(w => {
+    const btn = document.createElement('button');
+    btn.textContent = w;
+    btn.onclick = () => {
+      words[words.length-1] = w;
+      text = words.join(' ') + ' ';
+      cursor = text.length;
+      composition = '';
+      updateDisplay();
+    };
+    predBar.appendChild(btn);
+  });
+}
+
+function vibrate(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch(e) {} }
+
+function insertChar(ch) {
+  text = text.slice(0,cursor) + ch + text.slice(cursor);
+  cursor += ch.length;
+  composition = '';
+  updateDisplay();
+  vibrate(10);
+}
+
+function deleteChar() {
+  if (cursor <= 0) return;
+  text = text.slice(0,cursor-1) + text.slice(cursor);
+  cursor--;
+  composition = '';
+  updateDisplay();
+  vibrate(15);
+}
+
+function moveCursor(dir) {
+  switch(dir) {
+    case 'left': cursor = Math.max(0,cursor-1); break;
+    case 'right': cursor = Math.min(text.length,cursor+1); break;
+    case 'up': { const i = text.slice(0,cursor).lastIndexOf('\n'); cursor = i>0?i:0; break; }
+    case 'down': { const i = text.slice(cursor).indexOf('\n'); cursor = i>=0?cursor+i+1:text.length; break; }
+  }
+  composition = '';
+  updateDisplay();
+  vibrate(5);
+}
+
+function commitComp() {
+  if (composition) { insertChar(composition); composition = ''; }
+}
+
+function sendMessage() {
+  if (!text.trim()) return;
+  const msg = document.createElement('div');
+  msg.className = 'sent';
+  msg.textContent = text.trim();
+  chat.appendChild(msg);
+  text = '';
+  cursor = 0;
+  updateDisplay();
+  chat.scrollTop = chat.scrollHeight;
+  // auto reply
+  setTimeout(() => {
+    const r = document.createElement('div');
+    r.className = 'recv';
+    r.textContent = 'Got it!';
+    chat.appendChild(r);
+    chat.scrollTop = chat.scrollHeight;
+  }, 500);
+}
+
+// Multi-tap handler
+function handleKey(k) {
+  if (k.action === 'backspace') { commitComp(); deleteChar(); return; }
+  if (k.action === 'space') { commitComp(); insertChar(' '); return; }
+  if (k.action === 'enter') { commitComp(); sendMessage(); return; }
+  if (k.action === 'left' || k.action === 'right' || k.action === 'up' || k.action === 'down') {
+    commitComp(); moveCursor(k.action); return;
+  }
+  if (k.action === 'mode') {
+    commitComp();
+    const modes = ['compact','t9','swipe'];
+    const idx = modes.indexOf(inputMode);
+    inputMode = modes[(idx+1)%modes.length];
+    modeLabel.textContent = inputMode;
+    renderKeyboard();
+    return;
+  }
+  // Character key
+  if (k.single) { insertChar(k.chars[0]); return; }
+  if (!k.chars) return;
+  
+  // Multi-tap
+  if (composition) {
+    const i = k.chars.indexOf(composition);
+    if (i >= 0 && i < k.chars.length - 1) {
+      composition = k.chars[i+1];
+    } else {
+      commitComp();
+      composition = k.chars[0];
+    }
+  } else {
+    composition = k.chars[0];
+  }
+  updateDisplay();
+  // Show composition above keyboard
+  showComposition();
+}
+
+function showComposition() {
+  let el = document.getElementById('compDisplay');
+  if (!composition && el) { el.remove(); return; }
+  if (!composition) return;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'compDisplay';
+    el.className = 'ckb-comp';
+    kb.parentElement.appendChild(el);
+  }
+  el.textContent = composition;
+}
+
+// --- Render ---
+function renderKeyboard() {
+  kb.innerHTML = '';
+  const compEl = document.getElementById('compDisplay');
+  if (compEl) compEl.remove();
+  
+  if (inputMode === 'compact') {
+    const row = document.createElement('div');
+    row.className = 'ckb-row';
+    COMPACT_KEYS.forEach((k,i) => {
+      const btn = document.createElement('button');
+      btn.className = 'ckb-key compact';
+      if (k.action === 'backspace' || k.action === 'mode') btn.classList.add('special');
+      
+      if (k.chars && !k.single) {
+        // Multi-tap key: show first char + group label
+        const big = document.createElement('span');
+        big.className = 'big';
+        const small = document.createElement('span');
+        small.className = 'small';
+        small.textContent = k.label;
+        btn.appendChild(big);
+        btn.appendChild(small);
+        
+        btn.onpointerdown = (e) => {
+          e.preventDefault();
+          // Update the big letter based on composition
+          big.textContent = composition && k.chars.includes(composition) ? composition : k.chars[0];
+          handleKey(k);
+          btn.classList.add('pressed');
+        };
+        btn.onpointerup = () => btn.classList.remove('pressed');
+        btn.onpointerleave = () => btn.classList.remove('pressed');
+      } else {
+        btn.textContent = k.label;
+        btn.onpointerdown = (e) => {
+          e.preventDefault();
+          handleKey(k);
+          btn.classList.add('pressed');
+        };
+        btn.onpointerup = () => btn.classList.remove('pressed');
+        btn.onpointerleave = () => btn.classList.remove('pressed');
+      }
+      row.appendChild(btn);
+    });
+    kb.appendChild(row);
+  }
+  else if (inputMode === 't9') {
+    T9_KEYS.forEach(rowDef => {
+      const row = document.createElement('div');
+      row.className = 'ckb-row';
+      rowDef.forEach(k => {
+        const btn = document.createElement('button');
+        btn.className = 'ckb-key';
+        btn.textContent = k.label;
+        if (k.action) btn.classList.add('special');
+        btn.onpointerdown = (e) => { e.preventDefault(); if (k.chars) { handleKey({...k, single: k.chars.length===1}); } else { handleKey(k); } btn.classList.add('pressed'); };
+        btn.onpointerup = () => btn.classList.remove('pressed');
+        btn.onpointerleave = () => btn.classList.remove('pressed');
+        row.appendChild(btn);
+      });
+      kb.appendChild(row);
+    });
+  }
+  else if (inputMode === 'swipe') {
+    const dirs = [
+      {d:'←',l:'left',ll:'ABCD'},{d:'→',l:'right',ll:'EFGH'},
+      {d:'↑',l:'up',ll:'IJKLM'},{d:'↓',l:'down',ll:'NOPQR'},
+      {d:'↙',l:'downleft',ll:'ST'},{d:'↘',l:'downright',ll:'UV'},
+      {d:'↖',l:'upleft',ll:'WX'},{d:'↗',l:'upright',ll:'YZ'},
+    ];
+    const row = document.createElement('div');
+    row.className = 'ckb-row';
+    row.style.flexWrap = 'wrap';
+    dirs.forEach(d => {
+      const btn = document.createElement('button');
+      btn.className = 'ckb-key compact';
+      btn.style.flex = '1 1 22%';
+      btn.innerHTML = `<span style="font-size:12px">${d.d}</span><span style="font-size:6px;opacity:.5">${d.ll}</span>`;
+      btn.onpointerdown = (e) => { e.preventDefault(); btn.classList.add('pressed'); };
+      btn.onpointerup = () => btn.classList.remove('pressed');
+      btn.onpointerleave = () => btn.classList.remove('pressed');
+      row.appendChild(btn);
+    });
+    // Bottom row: backspace + space
+    const bs = document.createElement('button');
+    bs.className = 'ckb-key special'; bs.style.flex = '1 1 30%'; bs.textContent = '⌫';
+    bs.onpointerdown = (e) => { e.preventDefault(); deleteChar(); };
+    row.appendChild(bs);
+    const sp = document.createElement('button');
+    sp.className = 'ckb-key special'; sp.style.flex = '1 1 22%'; sp.textContent = '␣';
+    sp.onpointerdown = (e) => { e.preventDefault(); insertChar(' '); };
+    row.appendChild(sp);
+    kb.appendChild(row);
+  }
+}
+
+// Init
+renderKeyboard();
+updateDisplay();
+
+// Send on enter from text (via keyboard enter key)
+</script>
+</body>
+</html>
