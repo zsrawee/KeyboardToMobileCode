@@ -16,6 +16,8 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 /**
  * Compact Keyboard – Android IME (Input Method Service)
@@ -89,8 +91,16 @@ class CompactKeyboardIME : InputMethodService() {
             // Add JavaScript bridge for keyboard -> IME communication
             addJavascriptInterface(KeyboardBridge(), "Android")
 
-            // Load the keyboard HTML from assets
-            loadUrl("file:///android_asset/keyboard.html")
+            // Read HTML from assets and load via data URI (avoids file:// restrictions)
+            try {
+                val reader = BufferedReader(InputStreamReader(assets.open("keyboard.html")))
+                val html = reader.readText()
+                reader.close()
+                loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+            } catch (e: Exception) {
+                android.util.Log.e("CompactKB", "Failed to load keyboard.html: ${e.message}")
+                loadDataWithBaseURL(null, "<html><body style='color:#fff;background:#1c1c1e;padding:20px'>Error: ${e.message}</body></html>", "text/html", "UTF-8", null)
+            }
         }
 
         return webView

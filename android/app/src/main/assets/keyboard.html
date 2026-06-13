@@ -6,19 +6,22 @@
 <title>Compact KB</title>
 <style>
 html,body{width:100%;height:100%;margin:0;padding:0;background:#1c1c1e;color:#fff;font:14px Roboto,sans-serif;overflow:hidden}
-#app{display:flex;flex-direction:column;height:100%;padding:1px}
+#status{position:absolute;bottom:0;right:4px;font-size:8px;color:#444;z-index:99}
 .row{display:flex;gap:2px;margin-bottom:2px}
 .btn{flex:1;padding:7px 0;background:#2c2c2e;border:none;border-radius:4px;color:#fff;font-size:11px;text-align:center;touch-action:manipulation}
 .btn:active,.btn.down{background:#3a3a3c}
 .btn.sp{background:#3a3a3c}
 .btn.wide{flex:1.8}
 .top{display:flex;justify-content:space-between;padding:2px 4px;margin-bottom:1px;font-size:9px;color:#888}
-.top button{background:0 0;border:none;color:#0a84ff;font-size:10px;padding:2px 6px;border-radius:3px}
+.top button{background:0 0;border:none;color:#0a84ff;font-size:10px;padding:2px 6px}
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="app">Loading...</div>
+<div id="status">v1</div>
 <script>
+document.getElementById('app').innerHTML='Rendering...';
+
 var lang='en',comp='',sym=false,md='compact';
 
 var layout={
@@ -35,66 +38,74 @@ var layout={
 };
 
 function render(){
- var app=document.getElementById('app');app.innerHTML='';
- // top bar
- var tb=document.createElement('div');tb.className='top';
- tb.innerHTML='<span id=\"ml\">'+md+'</span><div><button onclick=\"try{Android.switchToNextIME()}catch(e){}\">⌨️</button><button onclick=\"try{Android.performBack()}catch(e){}\">✕</button></div>';
- app.appendChild(tb);
- // rows
- var rows;
- if(sym){
-  rows=[
-   [{t:'1',c:'1'},{t:'2',c:'2'},{t:'3',c:'3'},{t:'4',c:'4'},{t:'5',c:'5'},{t:'6',c:'6'},{t:'7',c:'7'},{t:'8',c:'8'},{t:'9',c:'9'},{t:'0',c:'0'}],
-   [{t:'@',c:'@'},{t:'!',c:'!'},{t:'?',c:'?'},{t:'.',c:'.'},{t:',',c:','},{t:\"'\",c:\"'\"},{t:'\"',c:'\"'},{t:';',c:';'},{t:':',c:':'},{t:'-',c:'-'}],
-   [{t:'💬',a:'lang'},{t:'␣',a:'space',w:1},{t:'↵',a:'enter',w:1},{t:'ABC',a:'num'},{t:'⌫',a:'del',sp:1}]
-  ];
- }else{rows=layout[lang];}
- for(var ri=0;ri<rows.length;ri++){
-  var r=document.createElement('div');r.className='row';
-  var keys=rows[ri];
-  for(var ki=0;ki<keys.length;ki++){
-   (function(k){
-    var b=document.createElement('button');b.className='btn';
-    if(k.sp)b.className+=' sp';if(k.w)b.className+=' wide';
-    b.textContent=k.t;
-    b.onclick=function(){handle(k,b);};
-    r.appendChild(b);
-   })(keys[ki]);
+ try{
+  var app=document.getElementById('app');
+  if(!app)return;
+  app.innerHTML='';
+  // top bar
+  var tb=document.createElement('div');tb.style.cssText='display:flex;justify-content:space-between;padding:2px 4px;margin-bottom:1px;font-size:9px;color:#888';
+  tb.innerHTML='<span>'+md+'</span><div><button onclick="try{Android.switchToNextIME()}catch(e){}" style="background:0;border:none;color:#0a84ff;font-size:10px">⌨️</button><button onclick="try{Android.performBack()}catch(e){}" style="background:0;border:none;color:#0a84ff;font-size:10px">✕</button></div>';
+  app.appendChild(tb);
+  // rows
+  var rows;
+  if(sym){
+   rows=[
+    [{t:'1',c:'1'},{t:'2',c:'2'},{t:'3',c:'3'},{t:'4',c:'4'},{t:'5',c:'5'},{t:'6',c:'6'},{t:'7',c:'7'},{t:'8',c:'8'},{t:'9',c:'9'},{t:'0',c:'0'}],
+    [{t:'@',c:'@'},{t:'!',c:'!'},{t:'?',c:'?'},{t:'.',c:'.'},{t:',',c:','},{t:\"'\",c:\"'\"},{t:'\"',c:'\"'},{t:';',c:';'},{t:':',c:':'},{t:'-',c:'-'}],
+    [{t:'💬',a:'lang'},{t:'␣',a:'space',w:1},{t:'↵',a:'enter',w:1},{t:'ABC',a:'num'},{t:'⌫',a:'del',sp:1}]
+   ];
+  }else{rows=layout[lang];}
+  for(var ri=0;ri<rows.length;ri++){
+   var r=document.createElement('div');r.style.cssText='display:flex;gap:2px;margin-bottom:2px';
+   var keys=rows[ri];
+   for(var ki=0;ki<keys.length;ki++){
+    (function(k){
+     var b=document.createElement('button');
+     b.style.cssText='flex:1;padding:7px 0;background:#2c2c2e;border:none;border-radius:4px;color:#fff;font-size:11px;text-align:center';
+     if(k.sp)b.style.background='#3a3a3c';
+     if(k.w)b.style.flex='1.8';
+     b.textContent=k.t;
+     b.onclick=function(){handle(k);};
+     r.appendChild(b);
+    })(keys[ki]);
+   }
+   app.appendChild(r);
   }
-  app.appendChild(r);
+ }catch(e){
+  document.getElementById('app').innerHTML='Error: '+e.message;
  }
 }
 
-function handle(k,b){
+function handle(k){
  try{
-  if(k.a=='del'){comp='';try{Android.deleteBackward();}catch(e){}return;}
-  if(k.a=='left'||k.a=='right'||k.a=='up'||k.a=='down'){comp='';try{Android.moveCursor(k.a);}catch(e){}return;}
-  if(k.a=='space'){comp='';try{Android.commitText(' ');}catch(e){}return;}
-  if(k.a=='enter'){comp='';try{Android.sendEnter();}catch(e){}return;}
+  if(k.a=='del'){comp='';Android.deleteBackward();return;}
+  if(k.a=='left'||k.a=='right'||k.a=='up'||k.a=='down'){comp='';Android.moveCursor(k.a);return;}
+  if(k.a=='space'){comp='';Android.commitText(' ');return;}
+  if(k.a=='enter'){comp='';Android.sendEnter();return;}
   if(k.a=='lang'){lang=(lang=='en')?'ar':'en';sym=false;render();return;}
   if(k.a=='num'){sym=!sym;comp='';render();return;}
   if(k.a=='mode'){
    var ms=['compact','t9','swipe'];var i=ms.indexOf(md);md=ms[(i+1)%3];
-   document.getElementById('ml').textContent=md;render();return;
+   render();return;
   }
   if(!k.c)return;
-  // Multi-tap (only for letter groups with 2+ chars)
-  if(k.c.length>1&&!k.sp){
+  if(k.c.length>1){
    if(comp){
     var i=k.c.indexOf(comp);
-    if(i>=0&&i<k.c.length-1){comp=k.c[i+1];}else{try{Android.commitText(comp);}catch(e){}comp=k.c[0];}
+    if(i>=0&&i<k.c.length-1){comp=k.c[i+1];}else{Android.commitText(comp);comp=k.c[0];}
    }else{comp=k.c[0];}
-   if(b){var oldT=b.textContent;b.textContent=comp;setTimeout(function(){b.textContent=oldT;},800);}
-   try{Android.vibrate(8);}catch(e){}
+   Android.vibrate(8);
    return;
   }
-  // Single character
-  try{Android.commitText(k.c);}catch(e){}
-  try{Android.vibrate(8);}catch(e){}
- }catch(e){}
+  Android.commitText(k.c);
+  Android.vibrate(8);
+ }catch(e){
+  document.getElementById('status').textContent='err:'+e.message;
+ }
 }
 
 render();
+document.getElementById('status').textContent='loaded';
 </script>
 </body>
 </html>
