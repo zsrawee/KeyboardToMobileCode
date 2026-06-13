@@ -2,124 +2,37 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Compact KB IME</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>KB</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none}
-html,body{width:100%;height:100%;background:#1c1c1e;color:#fff;font-family:Roboto,sans-serif;overflow:hidden}
-#app{display:flex;flex-direction:column;height:100%}
-.row{display:flex;gap:2px;padding:1px;background:#111;width:100%}
-.key{flex:1;display:flex;align-items:center;justify-content:center;background:#2c2c2e;border-radius:5px;font-size:12px;font-weight:500;padding:4px 0;min-height:36px;touch-action:manipulation;border:none;color:#fff;font-family:inherit}
-.key.down{background:#3a3a3c!important;transform:scale(0.92)!important}
-.key.sp{background:#3a3a3c;font-size:14px}
-.key.w2{flex:1.8}
-.top-bar{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:#1c1c1e;border-bottom:1px solid #333;min-height:24px}
-.top-bar span{font-size:9px;color:#888}
-.top-bar .btns{display:flex;gap:6px}
-.top-bar button{font-size:10px;background:0 0;border:none;color:#0a84ff;padding:2px 6px;border-radius:4px}
+body{margin:0;padding:0;background:#1c1c1e;color:#fff;font:14px sans-serif;overflow:hidden}
+#app{padding:2px}
+.r{display:flex;gap:2px;margin-bottom:2px}
+.k{flex:1;padding:6px 0;background:#2c2c2e;border:none;border-radius:4px;color:#fff;font-size:12px;text-align:center}
+.k:active{background:#3a3a3c}
+.s{background:#3a3a3c}
+.w{flex:1.8}
 </style>
 </head>
 <body>
 <div id="app">
- <div class="top-bar">
-  <button onclick="switchLang()" style="font-size:11px">🌐</button>
-  <span id="modeLabel">compact</span>
-  <div class="btns">
-   <button onclick="switchIME()">⌨️</button>
-   <button onclick="closeKB()">✕</button>
-  </div>
- </div>
- <div id="kb"></div>
+<div class="r">
+ <button class="k" onclick="c('a')">a</button>
+ <button class="k" onclick="c('b')">b</button>
+ <button class="k" onclick="c('c')">c</button>
+</div>
+<div class="r">
+ <button class="k s" onclick="del()">⌫</button>
+ <button class="k w" onclick="sp()">␣</button>
+ <button class="k w" onclick="en()">↵</button>
+</div>
 </div>
 <script>
-var comp='',mode='compact',lang='en';
-
-var L={
- en:[
-  [{l:'abc',c:'abc'},{l:'def',c:'def'},{l:'ghi',c:'ghi'},{l:'jkl',c:'jkl'},{l:'mno',c:'mno'},{l:'pqrs',c:'pqrs'},{l:'tuv',c:'tuv'},{l:'wxyz',c:'wxyz'}],
-  [{l:'/',s:1},{l:'#',s:1},{l:'←',a:'left'},{l:'↑',a:'up'},{l:'↓',a:'down'},{l:'→',a:'right'},{l:'⌫',a:'del'}],
-  [{l:'🌐',a:'lang'},{l:'␣',a:'space'},{l:'↵',a:'enter'},{l:'123',a:'num'},{l:'◉',a:'mode'}]
- ],
- ar:[
-  [{l:'ابت',c:'ابت'},{l:'ثجح',c:'ثجح'},{l:'خدذ',c:'خدذ'},{l:'رزس',c:'رزس'},{l:'شصض',c:'شصض'},{l:'طظع',c:'طظع'},{l:'غفق',c:'غفق'},{l:'كلم',c:'كلم'},{l:'نهوي',c:'نهوي'}],
-  [{l:'/',s:1},{l:'#',s:1},{l:'←',a:'left'},{l:'↑',a:'up'},{l:'↓',a:'down'},{l:'→',a:'right'},{l:'⌫',a:'del'}],
-  [{l:'EN',a:'lang'},{l:'␣',a:'space'},{l:'↵',a:'enter'},{l:'123',a:'num'},{l:'◉',a:'mode'}]
- ]
-};
-
-function handleKey(el){
- var k=el._k;
- if(!k)return;
- try{
-  if(k.a=='del'){comp='';try{Android.deleteBackward();}catch(e){}return;}
-  if(k.a=='left'||k.a=='right'||k.a=='up'||k.a=='down'){comp='';try{Android.moveCursor(k.a);}catch(e){}return;}
-  if(k.a=='space'){comp='';try{Android.commitText(' ');}catch(e){}return;}
-  if(k.a=='enter'){comp='';try{Android.sendEnter();}catch(e){}return;}
-  if(k.a=='lang'){lang=(lang=='en')?'ar':'en';render();return;}
-  if(k.a=='num'){symbolMode=!symbolMode;comp='';render();return;}
-  if(k.a=='mode'){
-   comp='';
-   var ms=['compact','t9','swipe'];
-   var i=ms.indexOf(mode);mode=ms[(i+1)%3];
-   document.getElementById('modeLabel').textContent=mode;
-   render();return;
-  }
-  if(k.s){try{Android.commitText(k.c);}catch(e){}return;}
-  if(!k.c)return;
-  // multi-tap
-  if(comp){
-   var i=k.c.indexOf(comp);
-   if(i>=0&&i<k.c.length-1){comp=k.c[i+1];}else{try{Android.commitText(comp);}catch(e){}comp=k.c[0];}
-  }else{comp=k.c[0];}
-  el.textContent=comp;
-  try{Android.vibrate(8);}catch(e){}
- }catch(e){}
-}
-
-function switchLang(){lang=(lang=='en')?'ar':'en';render();}
-function switchIME(){try{Android.switchToNextIME();}catch(e){}}
-function closeKB(){try{Android.performBack();}catch(e){}}
-
-function render(){
- try{
-  var kbEl=document.getElementById('kb');
-  if(!kbEl)return;
-  kbEl.innerHTML='';
-
-  var rows, isSym=window.symbolMode||false;
-  if(isSym){
-   // simple digits/symbols
-   rows=[
-    [{l:'1',s:1},{l:'2',s:1},{l:'3',s:1},{l:'4',s:1},{l:'5',s:1},{l:'6',s:1},{l:'7',s:1},{l:'8',s:1},{l:'9',s:1},{l:'0',s:1}],
-    [{l:'@',s:1},{l:'!',s:1},{l:'?',s:1},{l:'.',s:1},{l:',',s:1},{l:"'",s:1},{l:'"',s:1},{l:';',s:1},{l:':',s:1},{l:'-',s:1}],
-    [{l:'💬',a:'lang'},{l:'␣',a:'space'},{l:'↵',a:'enter'},{l:'ABC',a:'num'},{l:'⌫',a:'del'}]
-   ];
-  }else{
-   var lData=L[lang];
-   if(!lData)return;
-   rows=lData;
-  }
-
-  for(var ri=0;ri<rows.length;ri++){
-   var r=document.createElement('div');r.className='row';
-   var keys=rows[ri];
-   for(var ki=0;ki<keys.length;ki++){
-    (function(k){
-     var b=document.createElement('button');b.className='key';
-     b._k=k;
-     b.textContent=k.l;
-     if(k.a=='del'||k.a=='lang'||k.a=='num'||k.a=='mode')b.className+=' sp';
-     if(k.a=='space'||k.a=='enter')b.className+=' w2';
-     b.onclick=function(){handleKey(this);};
-     r.appendChild(b);
-    })(keys[ki]);
-   }
-   kbEl.appendChild(r);
-  }
- }catch(e){}
-}
-
-render();
+function c(ch){try{Android.commitText(ch);}catch(e){}try{Android.vibrate(8);}catch(e){}}
+function del(){try{Android.deleteBackward();}catch(e){}}
+function sp(){try{Android.commitText(' ');}catch(e){}}
+function en(){try{Android.sendEnter();}catch(e){}}
+try{Android.vibrate(1);}catch(e){}
 </script>
 </body>
 </html>

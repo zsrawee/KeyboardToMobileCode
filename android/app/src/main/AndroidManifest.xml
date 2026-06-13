@@ -3,8 +3,6 @@
 
     <!-- IME permission: required for input method services -->
     <uses-permission android:name="android.permission.BIND_INPUT_METHOD" />
-    <uses-permission android:name="android.permission.INTERNET" />
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
