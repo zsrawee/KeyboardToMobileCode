@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1c1c1e">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center_horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⌨️"
+            android:textSize="48dp"
+            android:layout_marginTop="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Compact KB"
+            android:textSize="24dp"
+            android:textColor="#ffffff"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ultra-low keyboard — 52px height"
+            android:textSize="13dp"
+            android:textColor="#8e8e93"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="\nTo enable this keyboard:"
+            android:textSize="15dp"
+            android:textColor="#ffffff"
+            android:textStyle="bold"
+            android:layout_marginTop="32dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="\n1. Tap the button below to open keyboard settings\n\n2. Tap 'Manage keyboards' (or 'On-screen keyboard')\n\n3. Toggle ON 'Compact KB'\n\n4. When typing, tap the keyboard icon in the bottom navigation bar and select Compact KB"
+            android:textSize="13dp"
+            android:textColor="#e5e5ea"
+            android:lineSpacingExtra="4dp" />
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Open Keyboard Settings"
+            android:textAllCaps="false"
+            android:layout_marginTop="24dp"
+            android:backgroundTint="#007aff"
+            android:onClick="openKeyboardSettings" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="\nFeatures:"
+            android:textSize="15dp"
+            android:textColor="#ffffff"
+            android:textStyle="bold"
+            android:layout_marginTop="32dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="• Single-row compact mode (52px)\n• Arabic / English support\n• T9 phone keypad mode\n• Swipe gesture mode\n• / and # keys\n• Arrow keys for cursor navigation\n• Word predictions\n• Dark theme"
+            android:textSize="13dp"
+            android:textColor="#e5e5ea"
+            android:lineSpacingExtra="3dp"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background circle -->
+    <path
+        android:fillColor="#1c1c1e"
+        android:pathData="M54,54m-50,0a50,50 0,1 1,100 0a50,50 0,1 1,-100 0" />
+    <!-- Keyboard icon -->
+    <path
+        android:fillColor="#0a84ff"
+        android:pathData="M30,60h48v4h-48zM30,66h48v4h-48zM30,72h48v4h-48zM34,54h8v4h-8zM46,54h8v4h-8zM58,54h8v4h-8zM70,54h8v4h-8z" />
+    <!-- Arrow hint -->
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M38,50l-4,4l4,4z" />
+</vector>
