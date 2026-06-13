@@ -9,11 +9,10 @@
 html,body{width:100%;height:100%;background:#1c1c1e;color:#fff;font-family:Roboto,sans-serif;overflow:hidden}
 #app{display:flex;flex-direction:column;height:100%}
 .row{display:flex;gap:2px;padding:1px;background:#111;width:100%}
-.key{flex:1;display:flex;align-items:center;justify-content:center;background:#2c2c2e;border-radius:5px;font-size:12px;font-weight:500;padding:4px 0;min-height:36px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;border:none;color:#fff;font-family:inherit;transition:transform .05s}
-.key:active,.key.down{background:#3a3a3c!important;transform:scale(0.92)!important}
+.key{flex:1;display:flex;align-items:center;justify-content:center;background:#2c2c2e;border-radius:5px;font-size:12px;font-weight:500;padding:4px 0;min-height:36px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;border:none;color:#fff;font-family:inherit}
+.key.down{background:#3a3a3c!important;transform:scale(0.92)!important}
 .key.sp{background:#3a3a3c;font-size:14px}
 .key.w2{flex:1.8}
-.key.ar-font{font-size:13px}
 .top-bar{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:#1c1c1e;border-bottom:1px solid #333;min-height:24px}
 .top-bar span{font-size:9px;color:#888}
 .top-bar .btns{display:flex;gap:6px}
@@ -28,23 +27,25 @@ html,body{width:100%;height:100%;background:#1c1c1e;color:#fff;font-family:Robot
 <body>
 <div id="app">
  <div class="top-bar">
-  <button onclick="switchLang()" style="font-size:11px">🌐</button>
+  <button id="langBtn" style="font-size:11px">🌐</button>
   <span id="modeLabel">compact</span>
   <div class="btns">
-   <button onclick="Android.switchToNextIME()">⌨️</button>
-   <button onclick="Android.performBack()">✕</button>
+   <button id="imeBtn">⌨️</button>
+   <button id="closeBtn">✕</button>
   </div>
  </div>
  <div class="pred" id="predBar"></div>
  <div id="kb"></div>
 </div>
 <script>
-// === Android bridge ===
-// All text operations go through Android.* methods
+// Global error handler
+window.onerror = function(msg,url,line) {
+  try { Android.commitText('[err]'); } catch(e) {}
+  return true;
+};
 
 let comp='',mode='compact',lang='en';
 
-// Layouts
 const L={
  en:{
   r1:[{l:'abc',c:['a','b','c']},{l:'def',c:['d','e','f']},{l:'ghi',c:['g','h','i']},{l:'jkl',c:['j','k','l']},{l:'mno',c:['m','n','o']},{l:'pqrs',c:['p','q','r','s']},{l:'tuv',c:['t','u','v']},{l:'wxyz',c:['w','x','y','z']}],
@@ -58,7 +59,6 @@ const L={
  }
 };
 
-// Symbols layout (toggled by 123)
 const SYM={
  r1:[{l:'1',c:['1'],s:1},{l:'2',c:['2'],s:1},{l:'3',c:['3'],s:1},{l:'4',c:['4'],s:1},{l:'5',c:['5'],s:1},{l:'6',c:['6'],s:1},{l:'7',c:['7'],s:1},{l:'8',c:['8'],s:1},{l:'9',c:['9'],s:1},{l:'0',c:['0'],s:1}],
  r2:[{l:'@',c:['@'],s:1},{l:'!',c:['!'],s:1},{l:'?',c:['?'],s:1},{l:'.',c:['.'],s:1},{l:',',c:[','],s:1},{l:"'",c:["'"],s:1},{l:'"',c:['"'],s:1},{l:';',c:[';'],s:1},{l:':',c:[':'],s:1},{l:'-',c:['-'],s:1}],
@@ -68,80 +68,99 @@ const SYM={
 let symbolMode=false;
 
 function commitComp(){
- if(comp){Android.commitText(comp);comp=''}
+ if(comp){try{Android.commitText(comp);}catch(e){}comp=''}
 }
 
 function handleKey(k){
- if(k.a=='del'){commitComp();Android.deleteBackward();return}
- if(k.a=='left'||k.a=='right'||k.a=='up'||k.a=='down'){commitComp();Android.moveCursor(k.a);return}
- if(k.a=='space'){commitComp();Android.commitText(' ');return}
- if(k.a=='enter'){commitComp();Android.sendEnter();return}
- if(k.a=='lang'){lang=(lang=='en')?'ar':'en';render();return}
- if(k.a=='num'){symbolMode=!symbolMode;commitComp();render();return}
- if(k.a=='mode'){
-  commitComp();
-  const ms=['compact','t9','swipe'];
-  let i=ms.indexOf(mode);mode=ms[(i+1)%3];
-  document.getElementById('modeLabel').textContent=mode;
-  symbolMode=false;render();return
- }
- // Character
- if(k.s){Android.commitText(k.c[0]);return}
- if(!k.c)return;
- // Multi-tap
- if(comp){
-  const i=k.c.indexOf(comp);
-  if(i>=0&&i<k.c.length-1){comp=k.c[i+1]}else{commitComp();comp=k.c[0]}
- }else{comp=k.c[0]}
- showComp();
- Android.vibrate(8);
+ try{
+  if(k.a=='del'){commitComp();try{Android.deleteBackward();}catch(e){}return}
+  if(k.a=='left'||k.a=='right'||k.a=='up'||k.a=='down'){commitComp();try{Android.moveCursor(k.a);}catch(e){}return}
+  if(k.a=='space'){commitComp();try{Android.commitText(' ');}catch(e){}return}
+  if(k.a=='enter'){commitComp();try{Android.sendEnter();}catch(e){}return}
+  if(k.a=='lang'){lang=(lang=='en')?'ar':'en';symbolMode=false;document.getElementById('langBtn').textContent=lang=='en'?'🌐':'EN';render();return}
+  if(k.a=='num'){symbolMode=!symbolMode;commitComp();render();return}
+  if(k.a=='mode'){
+   commitComp();
+   const ms=['compact','t9','swipe'];
+   let i=ms.indexOf(mode);mode=ms[(i+1)%3];
+   document.getElementById('modeLabel').textContent=mode;
+   symbolMode=false;render();return
+  }
+  // Character keys
+  if(k.s){try{Android.commitText(k.c[0]);}catch(e){}return}
+  if(!k.c)return;
+  // Multi-tap
+  if(comp){
+   const i=k.c.indexOf(comp);
+   if(i>=0&&i<k.c.length-1){comp=k.c[i+1]}else{commitComp();comp=k.c[0]}
+  }else{comp=k.c[0]}
+  showComp();
+  try{Android.vibrate(8);}catch(e){}
+ }catch(e){}
 }
 
 function showComp(){
- let el=document.getElementById('ci');
- if(!comp&&el){el.remove();return}
- if(!comp)return;
- if(!el){el=document.createElement('div');el.id='ci';el.className='comp-indicator';document.getElementById('kb').appendChild(el)}
- el.textContent=comp;
+ try{
+  let el=document.getElementById('ci');
+  if(!comp&&el){el.remove();return}
+  if(!comp)return;
+  if(!el){el=document.createElement('div');el.id='ci';el.className='comp-indicator'}
+  el.textContent=comp;
+  var kb=document.getElementById('kb');
+  if(el.parentNode!=kb)kb.appendChild(el);
+ }catch(e){}
 }
-
-function switchLang(){lang=(lang=='en')?'ar':'en';symbolMode=false;render()}
 
 function render(){
- document.getElementById('kb').innerHTML='';
- const ci=document.getElementById('ci');if(ci)ci.remove();
+ try{
+  document.getElementById('kb').innerHTML='';
+  var ci=document.getElementById('ci');if(ci)ci.remove();
 
- let rows;
- if(symbolMode){
-  rows=[SYM.r1,SYM.r2,SYM.r3];
- } else {
-  const Lx=L[lang];
-  rows=[Lx.r1,Lx.r2,Lx.r3];
- }
+  var rows;
+  if(symbolMode){
+   rows=[SYM.r1,SYM.r2,SYM.r3];
+  } else {
+   var Lx=L[lang];
+   rows=[Lx.r1,Lx.r2,Lx.r3];
+  }
 
- rows.forEach((keys,ri)=>{
-  const r=document.createElement('div');r.className='row';
-  keys.forEach(k=>{
-   const b=document.createElement('button');b.className='key';
-   if(k.a=='del'||k.a=='mode'||k.a=='lang'||k.a=='num')b.classList.add('sp');
-   if(k.a=='space'||k.a=='enter')b.classList.add('w2');
-   b.textContent=k.l;
-   b.onpointerdown=e=>{
-    e.preventDefault();b.classList.add('down');
-    handleKey(k);
-   };
-   b.onpointerup=()=>b.classList.remove('down');
-   b.onpointerleave=()=>b.classList.remove('down');
-   r.appendChild(b);
-  });
-  document.getElementById('kb').appendChild(r);
- });
- showComp();
+  for(var ri=0;ri<rows.length;ri++){
+   var keys=rows[ri];
+   var r=document.createElement('div');r.className='row';
+   for(var ki=0;ki<keys.length;ki++){
+    var k=keys[ki];
+    (function(key){
+     var b=document.createElement('button');b.className='key';
+     if(key.a=='del'||key.a=='mode'||key.a=='lang'||key.a=='num')b.classList.add('sp');
+     if(key.a=='space'||key.a=='enter')b.classList.add('w2');
+     b.textContent=key.l;
+     b.addEventListener('touchstart',function(e){
+      e.preventDefault();
+      b.classList.add('down');
+      handleKey(key);
+     },{passive:false});
+     b.addEventListener('touchend',function(){b.classList.remove('down');});
+     b.addEventListener('touchcancel',function(){b.classList.remove('down');});
+     // Pointer events as fallback
+     b.addEventListener('pointerdown',function(e){e.preventDefault();b.classList.add('down');handleKey(key);});
+     b.addEventListener('pointerup',function(){b.classList.remove('down');});
+     b.addEventListener('pointerleave',function(){b.classList.remove('down');});
+     r.appendChild(b);
+    })(k);
+   }
+   document.getElementById('kb').appendChild(r);
+  }
+  showComp();
+ }catch(e){}
 }
-render();
 
-// Haptic on load
-try{Android.vibrate(1)}catch(e){}
+// Set up top bar buttons
+document.getElementById('langBtn').onclick=function(){lang=(lang=='en')?'ar':'en';symbolMode=false;this.textContent=lang=='en'?'🌐':'EN';render();};
+document.getElementById('imeBtn').onclick=function(){try{Android.switchToNextIME();}catch(e){}};
+document.getElementById('closeBtn').onclick=function(){try{Android.performBack();}catch(e){}};
+
+render();
+try{Android.vibrate(1);}catch(e){}
 </script>
 </body>
 </html>

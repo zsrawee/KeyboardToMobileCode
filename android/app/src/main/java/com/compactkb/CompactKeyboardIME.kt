@@ -40,8 +40,6 @@ class CompactKeyboardIME : InputMethodService() {
                 allowFileAccess = true
                 builtInZoomControls = false
                 displayZoomControls = false
-                loadWithOverviewMode = true
-                useWideViewPort = true
             }
 
             setWebChromeClient(WebChromeClient())
@@ -89,14 +87,17 @@ class CompactKeyboardIME : InputMethodService() {
         @JavascriptInterface
         fun moveCursor(direction: String) {
             val ic = currentInputConnection ?: return
-            val sel = ic.getTextBeforeCursor(Int.MAX_VALUE, 0)?.length ?: 0
-            val total = (ic.getTextBeforeCursor(Int.MAX_VALUE, 0)?.length ?: 0) +
-                    (ic.getTextAfterCursor(Int.MAX_VALUE, 0)?.length ?: 0)
-
-            when (direction) {
-                "left" -> ic.setSelection(sel - 1, sel - 1)
-                "right" -> ic.setSelection(sel + 1, sel + 1)
-            }
+            try {
+                val sel = ic.getTextBeforeCursor(Int.MAX_VALUE, 0)?.length ?: 0
+                when (direction) {
+                    "left" -> if (sel > 0) ic.setSelection(sel - 1, sel - 1)
+                    "right" -> {
+                        val len = ic.getTextAfterCursor(Int.MAX_VALUE, 0)?.length ?: 0
+                        ic.setSelection(sel + 1, sel + 1)
+                    }
+                    "up", "down" -> { /* ignore vertical movement */ }
+                }
+            } catch (e: Exception) { /* ignore cursor errors */ }
         }
 
         @JavascriptInterface
