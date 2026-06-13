@@ -2,27 +2,27 @@
   "name": "compact-mobile-keyboard",
   "version": "1.0.0",
   "description": "Ultra-compact mobile keyboard - all letters in minimal vertical space",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
-  "style": "dist/index.esm.css",
+  "style": "dist/styles.css",
   "sideEffects": [
     "dist/styles.css",
     "dist/index.esm.css",
     "dist/index.esm.js",
-    "dist/keyboard.js"
+    "dist/index.cjs.js"
   ],
   "exports": {
     ".": {
       "import": "./dist/index.esm.js",
-      "require": "./dist/index.js",
-      "style": "./dist/index.esm.css",
+      "require": "./dist/index.cjs.js",
+      "style": "./dist/styles.css",
       "default": "./dist/index.esm.js"
     },
-    "./dist/index.esm.css": "./dist/index.esm.css"
+    "./dist/styles.css": "./dist/styles.css"
   },
   "scripts": {
-    "build": "tsc && esbuild src/index.ts --bundle --format=esm --outfile=dist/index.esm.js --external:react --external:react-dom && node scripts/inject-css.js",
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.esm.js --external:react --external:react-dom && esbuild src/index.ts --bundle --format=cjs --outfile=dist/index.cjs.js --external:react --external:react-dom && node /usr/local/lib/node_modules/typescript/lib/tsc.js --emitDeclarationOnly --outDir dist && node scripts/inject-css.js && node scripts/inject-cjs.js",
     "dev": "vite",
     "preview": "vite preview",
     "test": "vitest run",
