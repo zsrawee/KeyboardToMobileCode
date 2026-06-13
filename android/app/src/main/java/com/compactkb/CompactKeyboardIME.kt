@@ -42,8 +42,16 @@ class CompactKeyboardIME : InputMethodService() {
                 displayZoomControls = false
             }
 
-            setWebChromeClient(WebChromeClient())
-            setWebViewClient(WebViewClient())
+            setWebChromeClient(object : WebChromeClient() {
+                override fun onConsoleMessage(msg: String, line: Int, source: String) {
+                    android.util.Log.d("CompactKB", "JS[$source:$line]: $msg")
+                }
+            })
+            setWebViewClient(object : WebViewClient() {
+                override fun onReceivedError(view: WebView?, errorCode: Int, desc: String?, url: String?) {
+                    android.util.Log.e("CompactKB", "WebView error [$errorCode]: $desc")
+                }
+            })
 
             // Add JavaScript bridge for keyboard -> IME communication
             addJavascriptInterface(KeyboardBridge(), "Android")

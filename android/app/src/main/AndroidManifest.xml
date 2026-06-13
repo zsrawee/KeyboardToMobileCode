@@ -3,12 +3,14 @@
 
     <!-- IME permission: required for input method services -->
     <uses-permission android:name="android.permission.BIND_INPUT_METHOD" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
+        android:hardwareAccelerated="true"
         android:theme="@style/Theme.CompactKeyboard">
 
         <!-- IME Service - this is what Android recognizes as a keyboard -->
