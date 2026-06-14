@@ -121,10 +121,14 @@ class NativeKeyboardView(context: Context) : View(context) {
     // ============================================================
 
     private var pressedKeyId: String? = null
+    private var touchStartX = 0f
+    private var touchStartY = 0f
+    private var touchStartKeyId: String? = null
     private var touchSlop = 0
+    private var swipeThreshold = 12f // dp, converted in init
 
     // ============================================================
-    // Engines
+    // Multi-tap engine (used only for T9 mode)
     // ============================================================
 
     private val multiTapEngine = MultiTapEngine(
@@ -153,6 +157,7 @@ class NativeKeyboardView(context: Context) : View(context) {
         compPaint.textSize = (14 * density)
 
         touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+        swipeThreshold *= density
 
         keyPaint.color = keyBgColor
         keyActivePaint.color = keyBgActive
@@ -297,7 +302,7 @@ class NativeKeyboardView(context: Context) : View(context) {
 
     private fun drawKey(canvas: Canvas, lk: LayoutKey) {
         val isPressed = lk.data.id == pressedKeyId
-        val isComposing = multiTapEngine.isComposing &&
+        val isComposing = mode == KeyboardMode.T9 && multiTapEngine.isComposing &&
             lk.data.characters.size > 1 &&
             lk.data.characters.contains(multiTapEngine.compositionChar)
 
@@ -313,10 +318,8 @@ class NativeKeyboardView(context: Context) : View(context) {
         val cx = lk.bounds.centerX()
         val cy = lk.bounds.centerY()
 
-        if (lk.data.characters.size > 1 && multiTapEngine.isComposing &&
-            lk.data.characters.contains(multiTapEngine.compositionChar)
-        ) {
-            // Show composition char in accent color
+        if (isComposing) {
+            // Show composition char in accent color (T9 mode only)
             val comp = multiTapEngine.compositionChar
             textPaint.color = accentColor
             canvas.drawText(comp.toString(), cx, cy + textPaint.textSize * 0.35f, textPaint)
@@ -355,6 +358,8 @@ class NativeKeyboardView(context: Context) : View(context) {
     }
 
     private fun drawCompositionPopup(canvas: Canvas) {
+        // Only show composition popup in T9 mode
+        if (mode != KeyboardMode.T9) return
         val ch = multiTapEngine.compositionChar ?: return
         val activeKey = layoutKeys.firstOrNull { it.data.id == pressedKeyId }
             ?: layoutKeys.firstOrNull { lk ->
@@ -410,13 +415,16 @@ class NativeKeyboardView(context: Context) : View(context) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 pressedKeyId = null
+                touchStartKeyId = null
                 if (y < keyAreaTop) {
                     return handlePredictionTap(x, y)
                 }
                 val hit = findKeyAt(x, y)
                 if (hit != null) {
+                    touchStartX = x
+                    touchStartY = y
+                    touchStartKeyId = hit.data.id
                     pressedKeyId = hit.data.id
-                    handleKeyPress(hit)
                     invalidate()
                 }
                 return true
@@ -433,18 +441,24 @@ class NativeKeyboardView(context: Context) : View(context) {
                 return true
             }
             MotionEvent.ACTION_UP -> {
-                if (pressedKeyId != null) {
+                if (pressedKeyId != null && touchStartKeyId != null) {
                     val lk = layoutKeys.firstOrNull { it.data.id == pressedKeyId }
                     if (lk != null) {
-                        handleKeyRelease(lk)
+                        if (mode == KeyboardMode.COMPACT) {
+                            handleCompactGesture(lk, x, y)
+                        } else {
+                            handleKeyRelease(lk)
+                        }
                     }
                     pressedKeyId = null
+                    touchStartKeyId = null
                     invalidate()
                 }
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {
                 pressedKeyId = null
+                touchStartKeyId = null
                 invalidate()
                 return true
             }
@@ -477,63 +491,103 @@ class NativeKeyboardView(context: Context) : View(context) {
         return true
     }
 
-    private fun handleKeyPress(lk: LayoutKey) {
+    private fun handleCompactGesture(lk: LayoutKey, upX: Float, upY: Float) {
         val data = lk.data
+        val dx = upX - touchStartX
+        val dy = upY - touchStartY
+        val absDx = kotlin.math.abs(dx)
+        val absDy = kotlin.math.abs(dy)
+
         performHapticFeedback(10)
 
-        if (data.characters.size > 1) {
-            // Multi-tap key
-            multiTapEngine.tap(data.id, data.characters)
-            invalidate()
-        } else if (data.characters.size == 1) {
-            // Single character key (e.g., / or #)
-            val ch = data.characters[0]
-            typedBuffer.append(ch)
-            onAction?.invoke(KeyAction.Char(ch))
+        // Action keys (⌫ ␣ ◉ arrows) - tap only, no swipe
+        if (data.action != null) {
+            if (absDx < swipeThreshold && absDy < swipeThreshold) {
+                handleActionNow(data.action)
+            }
+            return
         }
-        // Action-only keys handled on release
+
+        // Character keys
+        if (data.characters.isEmpty()) return
+
+        val charIndex: Int = when {
+            absDx > swipeThreshold && absDx > absDy && dx > 0 -> 1 // swipe right → 2nd char
+            absDx > swipeThreshold && absDx > absDy && dx < 0 -> 2 // swipe left → 3rd char
+            absDy > swipeThreshold && absDy > absDx && dy > 0 -> 3 // swipe down → 4th char
+            else -> 0                                              // tap → 1st char
+        }
+
+        val ch = data.characters.getOrNull(charIndex) ?: data.characters[0]
+        typedBuffer.append(ch)
+        onAction?.invoke(KeyAction.Char(ch))
+        invalidate()
     }
 
-    private fun handleKeyRelease(lk: LayoutKey) {
-        val action = lk.data.action ?: return
-        performHapticFeedback(15)
-
+    private fun handleActionNow(action: KeyAction) {
         when (action) {
             is KeyAction.Backspace -> {
-                multiTapEngine.abort()
-                if (typedBuffer.isNotEmpty()) {
-                    typedBuffer.deleteCharAt(typedBuffer.length - 1)
-                }
+                if (typedBuffer.isNotEmpty()) typedBuffer.deleteCharAt(typedBuffer.length - 1)
                 onAction?.invoke(KeyAction.Backspace)
-                invalidate()
             }
             is KeyAction.Space -> {
-                multiTapEngine.commit()
                 typedBuffer.append(' ')
                 onAction?.invoke(KeyAction.Space)
-                invalidate()
             }
             is KeyAction.Enter -> {
-                multiTapEngine.commit()
                 typedBuffer.clear()
                 onAction?.invoke(KeyAction.Enter)
-                invalidate()
             }
             is KeyAction.ModeSwitch -> {
-                multiTapEngine.abort()
                 typedBuffer.clear()
                 switchMode()
             }
             is KeyAction.MoveCursor -> {
-                multiTapEngine.abort()
                 onAction?.invoke(action)
             }
-            is KeyAction.CommitPrediction -> {
-                // Handled in prediction tap, not here
+            else -> {}
+        }
+        invalidate()
+    }
+
+    private fun handleKeyRelease(lk: LayoutKey) {
+        val data = lk.data
+        val action = data.action
+
+        if (action != null) {
+            performHapticFeedback(15)
+            when (action) {
+                is KeyAction.Backspace -> {
+                    multiTapEngine.abort()
+                    if (typedBuffer.isNotEmpty()) typedBuffer.deleteCharAt(typedBuffer.length - 1)
+                    onAction?.invoke(KeyAction.Backspace)
+                }
+                is KeyAction.Space -> {
+                    multiTapEngine.commit()
+                    typedBuffer.append(' ')
+                    onAction?.invoke(KeyAction.Space)
+                }
+                is KeyAction.Enter -> {
+                    multiTapEngine.commit()
+                    typedBuffer.clear()
+                    onAction?.invoke(KeyAction.Enter)
+                }
+                is KeyAction.ModeSwitch -> {
+                    multiTapEngine.abort()
+                    typedBuffer.clear()
+                    switchMode()
+                }
+                is KeyAction.MoveCursor -> {
+                    multiTapEngine.abort()
+                    onAction?.invoke(action)
+                }
+                else -> {}
             }
-            is KeyAction.Char -> {
-                // Handled in handleKeyPress, not here
-            }
+            invalidate()
+        } else if (data.characters.isNotEmpty()) {
+            performHapticFeedback(10)
+            multiTapEngine.tap(data.id, data.characters)
+            invalidate()
         }
     }
 
