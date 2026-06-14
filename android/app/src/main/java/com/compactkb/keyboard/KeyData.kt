@@ -46,15 +46,16 @@ data class KeyData(
 
 fun compactLayout(): List<List<KeyData>> = listOf(
     // Row 1 – letters + symbols
+    // Gesture hints: → = swipe right, ← = swipe left, ↓ = swipe down
     listOf(
-        KeyData("abc", "abc", "abc", characters = listOf('a', 'b', 'c')),
-        KeyData("def", "def", "def", characters = listOf('d', 'e', 'f')),
-        KeyData("ghi", "ghi", "ghi", characters = listOf('g', 'h', 'i')),
-        KeyData("jkl", "jkl", "jkl", characters = listOf('j', 'k', 'l')),
-        KeyData("mno", "mno", "mno", characters = listOf('m', 'n', 'o')),
-        KeyData("pqrs", "pqrs", "pqrs", characters = listOf('p', 'q', 'r', 's')),
-        KeyData("tuv", "tuv", "tuv", characters = listOf('t', 'u', 'v')),
-        KeyData("wxyz", "wxyz", "wxyz", characters = listOf('w', 'x', 'y', 'z')),
+        KeyData("abc", "a", "→b←c", characters = listOf('a', 'b', 'c')),
+        KeyData("def", "d", "→e←f", characters = listOf('d', 'e', 'f')),
+        KeyData("ghi", "g", "→h←i", characters = listOf('g', 'h', 'i')),
+        KeyData("jkl", "j", "→k←l", characters = listOf('j', 'k', 'l')),
+        KeyData("mno", "m", "→n←o", characters = listOf('m', 'n', 'o')),
+        KeyData("pqrs", "p", "→q←r↓s", characters = listOf('p', 'q', 'r', 's')),
+        KeyData("tuv", "t", "→u←v", characters = listOf('t', 'u', 'v')),
+        KeyData("wxyz", "w", "→x←y↓z", characters = listOf('w', 'x', 'y', 'z')),
         KeyData("slash", "/", isSpecial = true, characters = listOf('/')),
         KeyData("hash", "#", isSpecial = true, characters = listOf('#')),
     ),
