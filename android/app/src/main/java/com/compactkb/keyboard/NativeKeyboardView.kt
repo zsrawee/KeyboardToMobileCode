@@ -567,7 +567,17 @@ class NativeKeyboardView(context: Context) : View(context) {
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
-        val height = MeasureSpec.getSize(heightMeasureSpec)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
+
+        // Compact keyboard: cap height at 200dp (fits all modes)
+        // 32dp prediction bar + up to 4 rows @ 38dp + gaps + indicator
+        val maxHeight = (200 * density).roundToInt()
+        val height = when (heightMode) {
+            MeasureSpec.EXACTLY -> minOf(heightSize, maxHeight)
+            MeasureSpec.AT_MOST -> minOf(heightSize, maxHeight)
+            else -> maxHeight
+        }
         setMeasuredDimension(width, height)
     }
 }
